@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "Puppy": {
+      "title": "Puppy",
+      "description": "Information about a puppy available for adoption.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the puppy." },
+        "name": { "type": "string", "description": "Name of the puppy." },
+        "breed": { "type": "string", "description": "Breed of the puppy." },
+        "age": { "type": "string", "description": "Age of the puppy (e.g., '2 months')." },
+        "gender": { "type": "string", "enum": ["male", "female"], "description": "Gender of the puppy." },
+        "price": { "type": "string", "description": "Price or price status (e.g., 'Contact for price')." },
+        "description": { "type": "string", "description": "Detailed description of the puppy." },
+        "images": { "type": "array", "items": { "type": "string" }, "description": "List of image URLs." },
+        "status": { "type": "string", "enum": ["available", "adopted"], "description": "Current status of the puppy." },
+        "createdAt": { "type": "number", "description": "Timestamp when the record was created." }
+      },
+      "required": ["name", "breed", "status", "createdAt"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "Adoption story or review from a customer.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userName": { "type": "string" },
+        "puppyName": { "type": "string" },
+        "breed": { "type": "string" },
+        "content": { "type": "string" },
+        "rating": { "type": "number" },
+        "image": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userName", "puppyName", "content", "rating", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/puppies/{puppyId}": {
+      "schema": "Puppy",
+      "description": "Collection of puppies for adoption."
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Collection of adoption reviews."
+    }
+  }
+}

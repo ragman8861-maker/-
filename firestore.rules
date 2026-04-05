@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: puppies
+    // Document ID: {puppyId}
+    // Fields:
+    //   - id: string (optional)
+    //   - name: string (required, 1-50 chars)
+    //   - breed: string (required, 1-50 chars)
+    //   - age: string (optional, 1-50 chars)
+    //   - gender: string (optional, 'male' or 'female')
+    //   - price: string (optional, 1-50 chars)
+    //   - description: string (optional, 1-1000 chars)
+    //   - images: list of strings (optional, max 10 URLs)
+    //   - status: string (required, 'available' or 'adopted')
+    //   - createdAt: number (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "ragman8861@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidPuppy(data) {
+      let allowedFields = ['id', 'name', 'breed', 'age', 'gender', 'price', 'description', 'images', 'status', 'createdAt'];
+      return hasOnlyAllowedFields(allowedFields) &&
+             hasRequiredFields(['name', 'breed', 'status', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 50 &&
+             data.breed is string && data.breed.size() > 0 && data.breed.size() <= 50 &&
+             (!('age' in data) || (data.age is string && data.age.size() <= 50)) &&
+             (!('gender' in data) || (data.gender in ['male', 'female'])) &&
+             (!('price' in data) || (data.price is string && data.price.size() <= 50)) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 1000)) &&
+             (!('images' in data) || (data.images is list && data.images.size() <= 10)) &&
+             data.status in ['available', 'adopted'] &&
+             data.createdAt is number;
+    }
+
+    function isValidReview(data) {
+      let allowedFields = ['id', 'userName', 'puppyName', 'breed', 'content', 'rating', 'image', 'createdAt'];
+      return hasOnlyAllowedFields(allowedFields) &&
+             hasRequiredFields(['userName', 'puppyName', 'content', 'rating', 'createdAt']) &&
+             data.userName is string && data.userName.size() > 0 && data.userName.size() <= 50 &&
+             data.puppyName is string && data.puppyName.size() > 0 && data.puppyName.size() <= 50 &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 2000 &&
+             data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+             (!('breed' in data) || (data.breed is string && data.breed.size() <= 50)) &&
+             (!('image' in data) || (data.image is string && data.image.size() <= 1000)) &&
+             data.createdAt is number;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /puppies/{puppyId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidPuppy(request.resource.data);
+      allow update: if isAdmin() && isValidPuppy(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidReview(request.resource.data);
+      allow update: if isAdmin() && isValidReview(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      // Users can only read/write their own profile
+      // Admins can read/write all profiles
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin(); // Only admins can assign roles
+    }
+    
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
